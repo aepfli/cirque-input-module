@@ -13,85 +13,12 @@ LOG_MODULE_REGISTER(pinnacle, CONFIG_INPUT_LOG_LEVEL);
 static int pinnacle_seq_read(const struct device *dev, const uint8_t addr, uint8_t *buf,
                              const uint8_t len) {
     const struct pinnacle_config *config = dev->config;
-#if DT_INST_ON_BUS(0, spi)
-    uint8_t tx_buffer[len + 3], rx_dummy[3];
-    tx_buffer[0] = PINNACLE_READ | addr;
-    memset(&tx_buffer[1], PINNACLE_AUTOINC, len + 2);
-
-    const struct spi_buf tx_buf[2] = {
-        {
-            .buf = tx_buffer,
-            .len = 3,
-        },
-        {
-            .buf = &tx_buffer[3],
-            .len = len,
-        },
-    };
-    const struct spi_buf_set tx = {
-        .buffers = tx_buf,
-        .count = 2,
-    };
-    struct spi_buf rx_buf[2] = {
-        {
-            .buf = rx_dummy,
-            .len = 3,
-        },
-        {
-            .buf = buf,
-            .len = len,
-        },
-    };
-    const struct spi_buf_set rx = {
-        .buffers = rx_buf,
-        .count = 2,
-    };
-    int ret = spi_transceive_dt(&config->bus, &tx, &rx);
-
-    return ret;
-#elif DT_INST_ON_BUS(0, i2c)
     return i2c_burst_read_dt(&config->bus, PINNACLE_READ | addr, buf, len);
-#endif
 }
 
 static int pinnacle_write(const struct device *dev, const uint8_t addr, const uint8_t val) {
     const struct pinnacle_config *config = dev->config;
-#if DT_INST_ON_BUS(0, spi)
-    uint8_t tx_buffer[2] = {PINNACLE_WRITE | addr, val};
-    uint8_t rx_buffer[2];
-
-    const struct spi_buf tx_buf = {
-        .buf = tx_buffer,
-        .len = 2,
-    };
-    const struct spi_buf_set tx = {
-        .buffers = &tx_buf,
-        .count = 1,
-    };
-
-    const struct spi_buf rx_buf = {
-        .buf = rx_buffer,
-        .len = 2,
-    };
-    const struct spi_buf_set rx = {
-        .buffers = &rx_buf,
-        .count = 1,
-    };
-
-    const int ret = spi_transceive_dt(&config->bus, &tx, &rx);
-
-    if (rx_buffer[1] != PINNACLE_FILLER) {
-        LOG_ERR("bad ret val %d", rx_buffer[1]);
-        return -EIO;
-    }
-
-    if (ret < 0) {
-        LOG_ERR("spi ret: %d", ret);
-    }
-    return ret;
-#elif DT_INST_ON_BUS(0, i2c)
     return i2c_reg_write_byte_dt(&config->bus, PINNACLE_WRITE | addr, val);
-#endif
 }
 
 static void set_int(const struct device *dev, const bool en) {
@@ -366,12 +293,7 @@ static int pinnacle_init(const struct device *dev) {
 #define PINNACLE_INST(n)                                                                           \
     static struct pinnacle_data pinnacle_data_##n;                                                 \
     static const struct pinnacle_config pinnacle_config_##n = {                                    \
-        .bus = COND_CODE_1(                                                                        \
-            DT_INST_ON_BUS(0, i2c), (I2C_DT_SPEC_INST_GET(0)),                                     \
-            (SPI_DT_SPEC_INST_GET(0,                                                               \
-                                  SPI_OP_MODE_MASTER | SPI_WORD_SET(8) | SPI_LINES_SINGLE |        \
-                                      SPI_TRANSFER_MSB | SPI_MODE_CPHA,                            \
-                                  0))),                                                            \
+        .bus =  (I2C_DT_SPEC_INST_GET(0),                                                            \
         .rotate_90 = DT_INST_PROP(0, rotate_90),                                                   \
         .sleep_en = DT_INST_PROP(0, sleep),                                                        \
         .no_taps = DT_INST_PROP(0, no_taps),                                                       \

@@ -84,11 +84,7 @@ enum pinnacle_sensitivity {
 };
 
 struct pinnacle_config {
-#if DT_INST_ON_BUS(0, i2c)
     const struct i2c_dt_spec bus;
-#elif DT_INST_ON_BUS(0, spi)
-    const struct spi_dt_spec bus;
-#endif
     bool rotate_90, sleep_en, no_taps;
     enum pinnacle_sensitivity sensitivity;
     const struct gpio_dt_spec dr;
